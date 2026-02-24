@@ -29,6 +29,7 @@ test.describe('Database Connection Tests', () => {
     const messages = await apiCall.connectDatabaseWithRetry(postgresUrl);
 
     // Verify final message indicates success
+    expect(messages.length).toBeGreaterThan(0);
     const finalMessage = messages[messages.length - 1];
     if (finalMessage.type !== 'final_result') {
       console.log(`[PostgreSQL API connect] unexpected final message: ${JSON.stringify(finalMessage)}`);
@@ -80,6 +81,7 @@ test.describe('Database Connection Tests', () => {
     const messages = await apiCall.connectDatabaseWithRetry(mysqlUrl);
 
     // Verify final message indicates success
+    expect(messages.length).toBeGreaterThan(0);
     const finalMessage = messages[messages.length - 1];
     if (finalMessage.type !== 'final_result') {
       console.log(`[MySQL API connect] unexpected final message: ${JSON.stringify(finalMessage)}`);
@@ -141,9 +143,9 @@ test.describe('Database Connection Tests', () => {
     }
     expect(connectionEstablished).toBeTruthy();
 
-    // Verify via API - poll until graph appears
+    // Verify via API - poll until the expected testdb graph appears
     const graphsList = await apiCall.waitForGraphPresent(
-      (graphs) => graphs.length > 0,
+      (graphs) => graphs.some((id) => id === 'testdb' || id.endsWith('_testdb')),
       30000
     );
     expect(graphsList).toBeDefined();
@@ -152,7 +154,7 @@ test.describe('Database Connection Tests', () => {
     console.log(`[PostgreSQL URL connect] graphs after connection: ${JSON.stringify(graphsList)}`);
 
     // Get the connected database ID
-    const graphId = graphsList[0];
+    const graphId = graphsList.find((id) => id === 'testdb' || id.endsWith('_testdb'));
     expect(graphId).toBeTruthy();
 
     // Verify connection appears in UI
@@ -180,9 +182,9 @@ test.describe('Database Connection Tests', () => {
     }
     expect(connectionEstablished).toBeTruthy();
 
-    // Verify via API - poll until graph appears
+    // Verify via API - poll until the expected testdb graph appears
     const graphsList = await apiCall.waitForGraphPresent(
-      (graphs) => graphs.length > 0,
+      (graphs) => graphs.some((id) => id === 'testdb' || id.endsWith('_testdb')),
       30000
     );
     expect(graphsList).toBeDefined();
@@ -191,7 +193,7 @@ test.describe('Database Connection Tests', () => {
     console.log(`[MySQL URL connect] graphs after connection: ${JSON.stringify(graphsList)}`);
 
     // Get the connected database ID
-    const graphId = graphsList[0];
+    const graphId = graphsList.find((id) => id === 'testdb' || id.endsWith('_testdb'));
     expect(graphId).toBeTruthy();
 
     // Verify connection appears in UI
@@ -224,9 +226,9 @@ test.describe('Database Connection Tests', () => {
     }
     expect(connectionEstablished).toBeTruthy();
 
-    // Verify via API - poll until graph appears
+    // Verify via API - poll until the expected testdb graph appears
     const graphsList = await apiCall.waitForGraphPresent(
-      (graphs) => graphs.length > 0,
+      (graphs) => graphs.some((id) => id === 'testdb' || id.endsWith('_testdb')),
       30000
     );
     expect(graphsList).toBeDefined();
@@ -235,7 +237,7 @@ test.describe('Database Connection Tests', () => {
     console.log(`[PostgreSQL Manual connect] graphs after connection: ${JSON.stringify(graphsList)}`);
 
     // Get the connected database ID
-    const graphId = graphsList[0];
+    const graphId = graphsList.find((id) => id === 'testdb' || id.endsWith('_testdb'));
     expect(graphId).toBeTruthy();
 
     // Verify connection appears in UI
@@ -268,9 +270,9 @@ test.describe('Database Connection Tests', () => {
     }
     expect(connectionEstablished).toBeTruthy();
 
-    // Verify via API - poll until graph appears
+    // Verify via API - poll until the expected testdb graph appears
     const graphsList = await apiCall.waitForGraphPresent(
-      (graphs) => graphs.length > 0,
+      (graphs) => graphs.some((id) => id === 'testdb' || id.endsWith('_testdb')),
       30000
     );
     expect(graphsList).toBeDefined();
@@ -279,7 +281,7 @@ test.describe('Database Connection Tests', () => {
     console.log(`[MySQL Manual connect] graphs after connection: ${JSON.stringify(graphsList)}`);
 
     // Get the connected database ID
-    const graphId = graphsList[0];
+    const graphId = graphsList.find((id) => id === 'testdb' || id.endsWith('_testdb'));
     expect(graphId).toBeTruthy();
 
     // Verify connection appears in UI
@@ -323,6 +325,7 @@ test.describe('Database Connection Tests', () => {
 
       // Connect database via API (retry on transient errors)
       const connectMessages = await apiCall.connectDatabaseWithRetry(postgresDeleteUrl);
+      expect(connectMessages.length).toBeGreaterThan(0);
       const finalMessage = connectMessages[connectMessages.length - 1];
       if (finalMessage.type !== 'final_result') {
         console.log(`[PostgreSQL delete connect] unexpected final message: ${JSON.stringify(finalMessage)}`);
@@ -357,11 +360,11 @@ test.describe('Database Connection Tests', () => {
       await homePage.clickOnDeleteGraph(graphId!);
       await homePage.clickOnDeleteModalConfirm();
       
-      // Wait for deletion to complete
-      await homePage.wait(1000);
-
-      // Verify removed from API
-      graphsList = await apiCall.getGraphs();
+      // Wait for deletion to complete - poll until graphId is absent (up to 30s)
+      graphsList = await apiCall.waitForGraphPresent(
+        (graphs) => !graphs.some((id) => id === graphId),
+        30000
+      );
       expect(graphsList.length).toBe(initialCount - 1);
       expect(graphsList).not.toContain(graphId);
     });
@@ -373,6 +376,7 @@ test.describe('Database Connection Tests', () => {
 
       // Connect database via API (retry on transient errors)
       const connectMessages = await apiCall.connectDatabaseWithRetry(mysqlDeleteUrl);
+      expect(connectMessages.length).toBeGreaterThan(0);
       const finalMessage = connectMessages[connectMessages.length - 1];
       if (finalMessage.type !== 'final_result') {
         console.log(`[MySQL delete connect] unexpected final message: ${JSON.stringify(finalMessage)}`);
@@ -411,11 +415,11 @@ test.describe('Database Connection Tests', () => {
       await homePage.clickOnDeleteGraph(graphId!);
       await homePage.clickOnDeleteModalConfirm();
       
-      // Wait for deletion to complete
-      await homePage.wait(1000);
-
-      // Verify removed from API
-      graphsList = await apiCall.getGraphs();
+      // Wait for deletion to complete - poll until graphId is absent (up to 30s)
+      graphsList = await apiCall.waitForGraphPresent(
+        (graphs) => !graphs.some((id) => id === graphId),
+        30000
+      );
       expect(graphsList.length).toBe(initialCount - 1);
       expect(graphsList).not.toContain(graphId);
     });

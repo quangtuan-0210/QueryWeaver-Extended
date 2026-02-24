@@ -319,17 +319,24 @@ export default class ApiCalls {
   ): Promise<StreamMessage[]> {
     let lastMessages: StreamMessage[] = [];
     for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-      const response = await this.connectDatabase(connectionUrl);
-      const messages = await this.parseStreamingResponse(response);
-      const finalMessage = messages[messages.length - 1];
-      if (finalMessage && finalMessage.type === "final_result") {
-        return messages;
+      try {
+        const response = await this.connectDatabase(connectionUrl);
+        const messages = await this.parseStreamingResponse(response);
+        const finalMessage = messages[messages.length - 1];
+        if (finalMessage && finalMessage.type === "final_result") {
+          return messages;
+        }
+        console.log(
+          `[connectDatabaseWithRetry] attempt ${attempt}/${maxAttempts} did not return final_result.`,
+          `Last message: ${JSON.stringify(finalMessage)}`
+        );
+        lastMessages = messages;
+      } catch (err) {
+        console.error(
+          `[connectDatabaseWithRetry] attempt ${attempt}/${maxAttempts} threw an error:`,
+          (err as Error).message
+        );
       }
-      console.log(
-        `[connectDatabaseWithRetry] attempt ${attempt}/${maxAttempts} did not return final_result.`,
-        `Last message: ${JSON.stringify(finalMessage)}`
-      );
-      lastMessages = messages;
       if (attempt < maxAttempts) {
         await new Promise((resolve) => setTimeout(resolve, retryDelayMs));
       }
