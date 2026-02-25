@@ -5,7 +5,7 @@ import BrowserWrapper from '../infra/ui/browserWrapper';
 import ApiCalls from '../logic/api/apiCalls';
 
 // Database connection tests - uses authenticated storageState from auth.setup
-test.describe('Database Connection Tests', () => {
+test.describe.serial('Database Connection Tests', () => {
   
   let browser: BrowserWrapper;
   let apiCall: ApiCalls;
@@ -38,7 +38,7 @@ test.describe('Database Connection Tests', () => {
     expect(finalMessage.success).toBeTruthy();
 
     // Get the list of databases to find the connected database
-    const graphsList = await apiCall.waitForGraphPresent(
+    const graphsList = await apiCall.waitForGraphs(
       (graphs) => graphs.some((id) => id === 'testdb' || id.endsWith('_testdb')),
       30000
     );
@@ -90,7 +90,7 @@ test.describe('Database Connection Tests', () => {
     expect(finalMessage.success).toBeTruthy();
 
     // Get the list of databases to find the connected database
-    const graphsList = await apiCall.waitForGraphPresent(
+    const graphsList = await apiCall.waitForGraphs(
       (graphs) => graphs.some((id) => id === 'testdb' || id.endsWith('_testdb')),
       30000
     );
@@ -144,7 +144,7 @@ test.describe('Database Connection Tests', () => {
     expect(connectionEstablished).toBeTruthy();
 
     // Verify via API - poll until the expected testdb graph appears
-    const graphsList = await apiCall.waitForGraphPresent(
+    const graphsList = await apiCall.waitForGraphs(
       (graphs) => graphs.some((id) => id === 'testdb' || id.endsWith('_testdb')),
       30000
     );
@@ -183,7 +183,7 @@ test.describe('Database Connection Tests', () => {
     expect(connectionEstablished).toBeTruthy();
 
     // Verify via API - poll until the expected testdb graph appears
-    const graphsList = await apiCall.waitForGraphPresent(
+    const graphsList = await apiCall.waitForGraphs(
       (graphs) => graphs.some((id) => id === 'testdb' || id.endsWith('_testdb')),
       30000
     );
@@ -227,7 +227,7 @@ test.describe('Database Connection Tests', () => {
     expect(connectionEstablished).toBeTruthy();
 
     // Verify via API - poll until the expected testdb graph appears
-    const graphsList = await apiCall.waitForGraphPresent(
+    const graphsList = await apiCall.waitForGraphs(
       (graphs) => graphs.some((id) => id === 'testdb' || id.endsWith('_testdb')),
       30000
     );
@@ -271,7 +271,7 @@ test.describe('Database Connection Tests', () => {
     expect(connectionEstablished).toBeTruthy();
 
     // Verify via API - poll until the expected testdb graph appears
-    const graphsList = await apiCall.waitForGraphPresent(
+    const graphsList = await apiCall.waitForGraphs(
       (graphs) => graphs.some((id) => id === 'testdb' || id.endsWith('_testdb')),
       30000
     );
@@ -334,7 +334,7 @@ test.describe('Database Connection Tests', () => {
       expect(finalMessage.success).toBeTruthy();
 
       // Poll until the graph appears in the API
-      let graphsList = await apiCall.waitForGraphPresent(
+      let graphsList = await apiCall.waitForGraphs(
         (graphs) => graphs.some((id) => id.includes('testdb_delete')),
         30000
       );
@@ -361,7 +361,7 @@ test.describe('Database Connection Tests', () => {
       await homePage.clickOnDeleteModalConfirm();
       
       // Wait for deletion to complete - poll until graphId is absent (up to 30s)
-      graphsList = await apiCall.waitForGraphPresent(
+      graphsList = await apiCall.waitForGraphs(
         (graphs) => !graphs.some((id) => id === graphId),
         30000
       );
@@ -385,7 +385,7 @@ test.describe('Database Connection Tests', () => {
       expect(finalMessage.success).toBeTruthy();
 
       // Poll until the graph appears in the API
-      let graphsList = await apiCall.waitForGraphPresent(
+      let graphsList = await apiCall.waitForGraphs(
         (graphs) => graphs.some((id) => id.includes('testdb_delete')),
         30000
       );
@@ -416,7 +416,7 @@ test.describe('Database Connection Tests', () => {
       await homePage.clickOnDeleteModalConfirm();
       
       // Wait for deletion to complete - poll until graphId is absent (up to 30s)
-      graphsList = await apiCall.waitForGraphPresent(
+      graphsList = await apiCall.waitForGraphs(
         (graphs) => !graphs.some((id) => id === graphId),
         30000
       );

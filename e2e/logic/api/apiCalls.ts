@@ -275,10 +275,11 @@ export default class ApiCalls {
   }
 
   /**
-   * Poll getGraphs() until a graph matching the predicate appears, or until timeout.
+   * Poll getGraphs() until the predicate is satisfied, or until timeout.
    * Returns the last observed graph list (for diagnostics even on timeout).
+   * Can be used to wait for a graph to appear or to disappear.
    */
-  async waitForGraphPresent(
+  async waitForGraphs(
     predicate: (graphs: GraphsListResponse) => boolean,
     timeoutMs: number = 30000,
     pollIntervalMs: number = 2000
@@ -293,7 +294,7 @@ export default class ApiCalls {
         }
       } catch (err) {
         console.log(
-          `[waitForGraphPresent] getGraphs() error: ${(err as Error).message}`
+          `[waitForGraphs] getGraphs() error: ${(err as Error).message}`
         );
       }
       const remaining = deadline - Date.now();
@@ -303,7 +304,7 @@ export default class ApiCalls {
       );
     }
     console.log(
-      `[waitForGraphPresent] timed out after ${timeoutMs}ms. Last graphs: ${JSON.stringify(lastGraphs)}`
+      `[waitForGraphs] timed out after ${timeoutMs}ms. Last graphs: ${JSON.stringify(lastGraphs)}`
     );
     return lastGraphs;
   }
