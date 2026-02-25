@@ -335,13 +335,13 @@ test.describe.serial('Database Connection Tests', () => {
 
       // Poll until the graph appears in the API
       let graphsList = await apiCall.waitForGraphs(
-        (graphs) => graphs.some((id) => id.includes('testdb_delete')),
+        (graphs) => graphs.some((id) => id === 'testdb_delete' || id.endsWith('_testdb_delete')),
         30000
       );
       expect(graphsList.length).toBeGreaterThan(0);
       
-      // Find the graph that contains 'testdb_delete' (could be 'testdb_delete' or 'userId_testdb_delete')
-      const graphId = graphsList.find(id => id.includes('testdb_delete'));
+      // Find the graph that is 'testdb_delete' or '{userId}_testdb_delete'
+      const graphId = graphsList.find(id => id === 'testdb_delete' || id.endsWith('_testdb_delete'));
       
       if (!graphId) {
         console.log('[PostgreSQL delete] Available graphs:', graphsList);
@@ -386,11 +386,11 @@ test.describe.serial('Database Connection Tests', () => {
 
       // Poll until the graph appears in the API
       let graphsList = await apiCall.waitForGraphs(
-        (graphs) => graphs.some((id) => id.includes('testdb_delete')),
+        (graphs) => graphs.some((id) => id === 'testdb_delete' || id.endsWith('_testdb_delete')),
         30000
       );
       expect(graphsList.length).toBeGreaterThan(0);
-      const graphId = graphsList.find(id => id.includes('testdb_delete'));
+      const graphId = graphsList.find(id => id === 'testdb_delete' || id.endsWith('_testdb_delete'));
       
       if (!graphId) {
         console.log('[MySQL delete] Available graphs:', graphsList);
