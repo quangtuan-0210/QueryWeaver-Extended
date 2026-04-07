@@ -13,8 +13,7 @@ USER root
 # Copy Python 3.12 from the python base image
 COPY --from=python-base /usr/local /usr/local
 
-# Install netcat for wait loop in start.sh and system build tools needed for
-# compiling Python wheels (g++, make, libc-dev)
+# Install netcat and build tools
 RUN apt-get update && apt-get install -y --no-install-recommends \
     netcat-openbsd \
     git \
@@ -31,35 +30,27 @@ WORKDIR /app
 # Install uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 
-# Copy pyproject.toml, uv.lock, and README.md (needed by hatchling during install)
+# Copy pyproject.toml, uv.lock, and README.md
 COPY pyproject.toml uv.lock* README.md ./
 
-# Install packages into system Python (no virtualenv in container)
+# Install packages into system Python
 ENV UV_SYSTEM_PYTHON=1
-
-# Ensure venv binaries are on PATH (uv sync always creates .venv)
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Install Python dependencies only (project itself installed after COPY)
-RUN uv sync --frozen --no-dev --no-install-project
+# Install Python dependencies
+RUN uv sync --no-dev --no-install-project
 
-# Install Node.js (Node 22) so we can build the frontend inside the image.
-# Use NodeSource setup script to get a recent Node version on Debian-based images.
-# Remove any pre-installed nodejs first to avoid conflicts.
+# Install Node.js 22 for frontend build
 RUN apt-get update \
     && apt-get remove -y nodejs || true \
     && rm -rf /var/lib/apt/lists/* \
     && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get update \
     && apt-get install -y nodejs \
-    && rm -rf /var/lib/apt/lists/* \
-    && node --version && npm --version
+    && rm -rf /var/lib/apt/lists/*
 
-# Copy only frontend package files so Docker can cache npm installs when
-# package.json / package-lock.json don't change.
+# Build Frontend
 COPY app/package*.json ./app/
-
-# Install frontend dependencies (reproducible install using package-lock)
 RUN if [ -f ./app/package-lock.json ]; then \
             npm --prefix ./app ci --no-audit --no-fund; \
         elif [ -f ./app/package.json ]; then \
@@ -69,24 +60,21 @@ RUN if [ -f ./app/package-lock.json ]; then \
         fi
 
 COPY ./app ./app
-
 RUN npm --prefix ./app run build
 
-# Copy application code 
+# Copy toàn bộ mã nguồn
 COPY . .
 
-# Install the project package now that source code is available
+# [LƯU Ý] Đã xóa toàn bộ các lệnh sed ép dùng Gemini ở đây
+
+# Final project sync
 RUN uv sync --frozen --no-dev
 
-# Copy and make start.sh executable
+# Copy start script
 COPY start.sh /start.sh
 RUN chmod +x /start.sh
 
-
-# Add MCP label
 LABEL io.modelcontextprotocol.server.name="com.falkordb/QueryWeaver"
-
 EXPOSE 5000 6379 3000
 
-# Use start.sh as entrypoint
 ENTRYPOINT ["/start.sh"]

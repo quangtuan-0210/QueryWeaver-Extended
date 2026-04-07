@@ -38,7 +38,6 @@ const DatabaseModal = ({ open, onOpenChange }: DatabaseModalProps) => {
 
   const addStep = (message: string, status: 'pending' | 'success' | 'error' = 'pending') => {
     setConnectionSteps(prev => {
-      // If adding a new pending step, mark the previous pending step as success
       if (status === 'pending' && prev.length > 0) {
         const lastStep = prev[prev.length - 1];
         if (lastStep.status === 'pending') {
@@ -48,7 +47,6 @@ const DatabaseModal = ({ open, onOpenChange }: DatabaseModalProps) => {
         }
       }
 
-      // If updating status (success/error), update the last pending step instead of adding new
       if (status !== 'pending' && prev.length > 0) {
         const lastStep = prev[prev.length - 1];
         if (lastStep.status === 'pending') {
@@ -58,13 +56,11 @@ const DatabaseModal = ({ open, onOpenChange }: DatabaseModalProps) => {
         }
       }
 
-      // Default: just add the new step
       return [...prev, { message, status }];
     });
   };
 
   const handleConnect = async () => {
-    // Validate based on connection mode
     if (connectionMode === 'url') {
       if (!connectionUrl || !selectedDatabase) {
         toast({
@@ -86,18 +82,17 @@ const DatabaseModal = ({ open, onOpenChange }: DatabaseModalProps) => {
     }
     
     setIsConnecting(true);
-    setConnectionSteps([]); // Clear previous steps
+    setConnectionSteps([]); 
     
     try {
-      // Build the connection URL
       let dbUrl = connectionUrl;
       if (connectionMode === 'manual') {
-        const protocol = selectedDatabase === 'mysql' ? 'mysql' : 'postgresql';
+        // ĐỘ CHẾ Ở ĐÂY: Thêm mssql+pymssql
+        const protocol = selectedDatabase === 'mysql' ? 'mysql' : selectedDatabase === 'mssql' ? 'mssql+pymssql' : 'postgresql';
         const builtUrl = new URL(`${protocol}://${host}:${port}/${database}`);
         builtUrl.username = username;
         builtUrl.password = password;
         
-        // Append schema option for PostgreSQL if provided
         if (selectedDatabase === 'postgresql' && schema.trim()) {
           if (/[^a-zA-Z0-9_]/.test(schema.trim())) {
             throw new Error('Schema name can only contain letters, digits, and underscores');
@@ -108,7 +103,6 @@ const DatabaseModal = ({ open, onOpenChange }: DatabaseModalProps) => {
         dbUrl = builtUrl.toString();
       }
 
-      // Make streaming request
       const response = await fetch(buildApiUrl('/database'), {
         method: 'POST',
         headers: {
@@ -120,17 +114,14 @@ const DatabaseModal = ({ open, onOpenChange }: DatabaseModalProps) => {
       });
 
       if (!response.ok) {
-        // Try to parse error message from server for all error responses
         try {
           const errorData = await response.json();
           if (errorData.error) {
             throw new Error(errorData.error);
           }
         } catch (jsonError) {
-          // If JSON parsing fails, fall back to status-based messages
         }
 
-        // Fallback error messages by status code
         const errorMessages: Record<number, string> = {
           400: 'Invalid database connection URL.',
           401: 'Not authenticated. Please sign in to connect databases.',
@@ -143,7 +134,6 @@ const DatabaseModal = ({ open, onOpenChange }: DatabaseModalProps) => {
         throw new Error(errorMessages[response.status] || `Failed to connect to database (${response.status})`);
       }
 
-      // Process streaming response
       if (!response.body) {
         throw new Error('Streaming response has no body');
       }
@@ -164,10 +154,8 @@ const DatabaseModal = ({ open, onOpenChange }: DatabaseModalProps) => {
         }
 
         if (obj.type === 'reasoning_step') {
-          // Show incremental step
           addStep(obj.message || 'Working...', 'pending');
         } else if (obj.type === 'final_result') {
-          // Mark last step as success/error and finish
           addStep(obj.message || 'Completed', obj.success ? 'success' : 'error');
           setIsConnecting(false);
           
@@ -179,7 +167,6 @@ const DatabaseModal = ({ open, onOpenChange }: DatabaseModalProps) => {
             setTimeout(async () => {
               await refreshGraphs();
               onOpenChange(false);
-              // Reset form
               setConnectionMode('url');
               setSelectedDatabase("");
               setConnectionUrl("");
@@ -223,7 +210,6 @@ const DatabaseModal = ({ open, onOpenChange }: DatabaseModalProps) => {
 
         buffer += decoder.decode(value, { stream: true });
         const parts = buffer.split(delimiter);
-        // Last piece is possibly incomplete
         buffer = parts.pop() || '';
         for (const part of parts) {
           processChunk(part);
@@ -252,7 +238,7 @@ const DatabaseModal = ({ open, onOpenChange }: DatabaseModalProps) => {
             Connect to Database
           </DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
-            Connect to PostgreSQL or MySQL database using a connection URL or manual entry.{" "}
+            Connect to PostgreSQL, MySQL, or SQL Server database using a connection URL or manual entry.{" "}
             <a
               href="https://www.falkordb.com/privacy-policy/"
               target="_blank"
@@ -265,7 +251,6 @@ const DatabaseModal = ({ open, onOpenChange }: DatabaseModalProps) => {
         </DialogHeader>
         
         <div className="space-y-4 mt-6" data-testid="database-modal-content">
-          {/* Database Type Selection */}
           <div className="space-y-2">
             <Label htmlFor="database-type" className="text-sm font-medium">
               Database Type
@@ -289,11 +274,17 @@ const DatabaseModal = ({ open, onOpenChange }: DatabaseModalProps) => {
                     MySQL
                   </div>
                 </SelectItem>
+                {/* ĐỘ CHẾ Ở ĐÂY: Thêm Option SQL Server */}
+                <SelectItem value="mssql" className="focus:bg-purple-500/20 focus:text-foreground" data-testid="mssql-option">
+                  <div className="flex items-center">
+                    <div className="w-4 h-4 bg-red-500 rounded-sm mr-2"></div>
+                    SQL Server
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* Connection Mode Toggle */}
           {selectedDatabase && (
             <div className="flex gap-2 p-1 bg-muted rounded-lg">
               <Button
@@ -328,6 +319,8 @@ const DatabaseModal = ({ open, onOpenChange }: DatabaseModalProps) => {
                 placeholder={
                   selectedDatabase === 'postgresql'
                     ? 'postgresql://username:password@host:5432/database'
+                    : selectedDatabase === 'mssql'
+                    ? 'mssql+pymssql://username:password@host:1433/database'
                     : 'mysql://username:password@host:3306/database'
                 }
                 value={connectionUrl}
@@ -357,7 +350,7 @@ const DatabaseModal = ({ open, onOpenChange }: DatabaseModalProps) => {
                 <Label htmlFor="port" className="text-sm font-medium">Port</Label>
                 <Input
                   id="port"
-                  placeholder={selectedDatabase === "postgresql" ? "5432" : "3306"}
+                  placeholder={selectedDatabase === "postgresql" ? "5432" : selectedDatabase === "mssql" ? "1433" : "3306"}
                   value={port}
                   onChange={(e) => setPort(e.target.value)}
                   className="bg-muted border-border focus-visible:ring-purple-500"
@@ -398,7 +391,6 @@ const DatabaseModal = ({ open, onOpenChange }: DatabaseModalProps) => {
                 />
               </div>
               
-              {/* Schema field - PostgreSQL only */}
               {selectedDatabase === 'postgresql' && (
                 <div className="space-y-2">
                   <Label htmlFor="schema" className="text-sm font-medium">
@@ -432,7 +424,6 @@ const DatabaseModal = ({ open, onOpenChange }: DatabaseModalProps) => {
             </>
           )}
 
-          {/* Connection Progress Steps */}
           {connectionSteps.length > 0 && (
             <div className="mt-4 space-y-2 max-h-[220px] overflow-y-auto border border-border rounded-md p-3 bg-muted/30">
               {connectionSteps.map((step, index) => (
