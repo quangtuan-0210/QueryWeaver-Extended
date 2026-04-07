@@ -1,15 +1,15 @@
 # QueryWeaver - MSSQL Extension Edition 🚀
 
-Đây là phiên bản mở rộng và tùy biến của dự án mã nguồn mở **QueryWeaver** (một hệ thống Graph-based Text-to-SQL). 
-🔗 **Nguồn dự án gốc:** https://github.com/FalkorDB/QueryWeaver
+This is an extended and customized version of the open-source **QueryWeaver** project (a Graph-based Text-to-SQL system).
+🔗 **Original Project:** https://github.com/FalkorDB/QueryWeaver
 
-## 🌟 Những cải tiến trong phiên bản này (My Contributions)
-Dự án gốc chỉ hỗ trợ MySQL và PostgreSQL. Trong bản Fork này, mình đã nghiên cứu và tích hợp thành công **Microsoft SQL Server (MSSQL)** vào hệ thống, giải quyết triệt để các rào cản về cú pháp T-SQL và hạ tầng mạng:
+## 🌟 Key Enhancements (My Contributions)
+The original project only supports MySQL and PostgreSQL. In this fork, I have successfully researched and integrated **Microsoft SQL Server (MSSQL)** into the system, comprehensively resolving barriers related to T-SQL syntax and network infrastructure:
 
-* **Tích hợp Driver MSSQL:** Khởi tạo `MSSQLLoader` sử dụng `pymssql`, trích xuất toàn bộ Schema (Tables, Columns, Foreign Keys) từ SQL Server chuẩn xác.
-* **Xử lý xung đột T-SQL:** Tái cấu trúc logic truy vấn mẫu (Sample Query) bằng Subquery và `ORDER BY NEWID()`, vượt qua giới hạn cú pháp `DISTINCT` khắt khe của SQL Server.
-* **Xử lý Async Logic:** Fix triệt để lỗi bất đồng bộ trong quá trình Generator của Python khi duyệt và nhúng (Embed) sơ đồ dữ liệu vào GraphDB.
-* **Thiết lập Mạng lưới Docker-to-Host:** Cấu hình mở cổng TCP/IP 1433 và định tuyến `host.docker.internal` để Container có thể chui ra ngoài giao tiếp với SQL Server nội bộ (On-Premise).
+* **MSSQL Driver Integration:** Initialized `MSSQLLoader` using `pymssql` to accurately extract the entire database Schema (Tables, Columns, Foreign Keys) from SQL Server.
+* **T-SQL Conflict Resolution:** Restructured the sample query logic using Subqueries and `ORDER BY NEWID()`, successfully bypassing SQL Server's strict `DISTINCT` syntax limitations.
+* **Async Logic Fix:** Fully resolved asynchronous execution errors within Python's Generator process while traversing and embedding data schemas into GraphDB.
+* **Docker-to-Host Networking:** Configured TCP/IP port 1433 and implemented `host.docker.internal` routing, allowing the Docker container to communicate seamlessly with the local (On-Premise) SQL Server.
 
-## ⚖️ Giấy phép (License)
-Dự án này tuân thủ nghiêm ngặt giấy phép **GNU AGPLv3** từ tác giả gốc. Mã nguồn được mở hoàn toàn, đảm bảo tính minh bạch và chia sẻ cho cộng đồng. Vui lòng xem chi tiết trong file `LICENSE`.
+## ⚖️ License
+This project strictly adheres to the **GNU AGPLv3** license from the original authors. The source code remains fully open to ensure transparency and community sharing. Please refer to the `LICENSE` file for detailed information.
