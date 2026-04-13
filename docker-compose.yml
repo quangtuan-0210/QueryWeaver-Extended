@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  queryweaver:
+    build: 
+      context: .
+    container_name: queryweaver
+    ports:
+      - "8000:5000"
+    env_file:
+      - .env
+    environment:
+      - HOST=0.0.0.0
+    networks:
+      - queryweaver-net
+
+networks:
+  queryweaver-net:
+    external: true
