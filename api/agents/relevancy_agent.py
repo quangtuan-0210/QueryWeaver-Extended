@@ -61,6 +61,7 @@ Output format:
 }}
 
 Remember: **Prioritize the conversation’s actionable data intent over phrasing style. If missing info (like identity) was provided earlier in the chat, treat the question as on-topic.**
+CRITICAL STRICT RULE: You MUST write the "reason" and "suggestions" fields in the JSON ONLY in Vietnamese. DO NOT output any English words. PHẢI ĐIỀN LÝ DO VÀ GỢI Ý 100% BẰNG TIẾNG VIỆT.
 """
 
 

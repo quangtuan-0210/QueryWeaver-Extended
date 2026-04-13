@@ -35,6 +35,7 @@ Database Description: {DB_DESCRIPTION}
 
 **Response Format:**
 Provide a direct answer to the user's question in a conversational tone, as if you were explaining the findings to a colleague.
+CRITICAL STRICT RULE: You MUST explain the results, summarize the data, and write your final answer ONLY in Vietnamese. DO NOT output any English words under any circumstances. BẠN PHẢI TÓM TẮT DỮ LIỆU VÀ TRẢ LỜI 100% BẰNG TIẾNG VIỆT.
 """
 
 

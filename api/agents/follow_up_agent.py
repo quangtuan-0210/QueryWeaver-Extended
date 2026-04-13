@@ -5,7 +5,7 @@ from .utils import BaseAgent, run_completion
 
 FOLLOW_UP_GENERATION_PROMPT = """
 You are a helpful database expert. A colleague asked a question, but their query can’t run correctly.
-
+CRITICAL RULE: You MUST always respond, summarize and explain everything in Vietnamese language. LUÔN LUÔN GIAO TIẾP VÀ TRẢ LỜI BẰNG TIẾNG VIỆT.
 Context:
 - Question: "{QUESTION}"
 - Translatability: {IS_TRANSLATABLE}

@@ -56,6 +56,7 @@ def create_combined_description(  # pylint: disable=too-many-locals
         "Generate ONE concise sentence starting with the table name, "
         "describing what the table stores, using present tense. "
         "Do not add explanations."
+        "CRITICAL RULE: You MUST always respond, summarize and explain everything in Vietnamese language. LUÔN LUÔN GIAO TIẾP VÀ TRẢ LỜI BẰNG TIẾNG VIỆT."
     )
 
     user_prompt_template = (
