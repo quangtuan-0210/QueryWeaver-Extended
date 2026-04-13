@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Database, Search, Code, MessageSquare, AlertTriangle, Copy, Check } from 'lucide-react';
+import { Database, Search, Code, MessageSquare, AlertTriangle, Copy, Check, Table, BarChart2, PieChart, LineChart } from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import type { User as UserType } from '@/types/api';
+
+import ChartViewer from './ChartViewer';
 
 interface Step {
   icon: 'search' | 'database' | 'code' | 'message';
@@ -37,7 +39,8 @@ interface ChatMessageProps {
 
 const ChatMessage = ({ type, content, steps, queryData, analysisInfo, confirmationData, progress, user, onConfirm, onCancel }: ChatMessageProps) => {
   const [copied, setCopied] = useState(false);
-
+  const [viewMode, setViewMode] = useState<'table' | 'chart'>('table');
+  const [chartType, setChartType] = useState<'bar' | 'line' | 'pie'>('bar');
   const handleCopyQuery = async () => {
     try {
       await navigator.clipboard.writeText(content);
@@ -228,48 +231,89 @@ const ChatMessage = ({ type, content, steps, queryData, analysisInfo, confirmati
             <AvatarFallback className="bg-primary text-primary-foreground text-xs font-bold">
               QW
             </AvatarFallback>
-        </Avatar>
-        <div className="flex-1 min-w-0 max-w-full overflow-hidden">
-          <Card className="bg-card border-success/30 max-w-full">
-            <CardContent className="p-4 max-w-full overflow-hidden">
-              <div className="flex items-center gap-2 mb-3">
-                <Database className="w-4 h-4 text-success" />
-                <span className="text-base font-semibold text-success">Query Results</span>
-                <Badge variant="outline" className="ml-auto text-sm">
-                  {queryData?.length || 0} rows
-                </Badge>
-              </div>
-              {queryData && queryData.length > 0 && (
-                <div className="max-w-full overflow-hidden -mx-4 px-4">
-                  <div className="overflow-x-auto overflow-y-auto max-h-96 border border-border rounded scrollbar-visible" style={{ maxWidth: '100%' }}>
-                    <table className="text-sm border-collapse" data-testid="results-table" style={{ width: '100%', maxWidth: '100%', tableLayout: 'auto', display: 'table' }}>
-                      <thead className="sticky top-0 bg-card z-10">
-                        <tr className="border-b border-border">
-                          {Object.keys(queryData[0]).map((column) => (
-                            <th key={column} className="text-left px-3 py-2 text-muted-foreground font-semibold bg-card break-words" style={{ maxWidth: '300px', minWidth: '100px' }}>
-                              {column}
-                            </th>
-                          ))}
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {queryData.map((row, index) => (
-                          <tr key={index} className="border-b border-border hover:bg-muted">
-                            {Object.values(row).map((value: any, cellIndex) => (
-                              <td key={cellIndex} className="px-3 py-2 text-foreground break-words" style={{ maxWidth: '300px', minWidth: '100px' }}>
-                                {String(value)}
-                              </td>
-                            ))}
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
+          </Avatar>
+          <div className="flex-1 min-w-0 max-w-full overflow-hidden">
+            <Card className="bg-card border-success/30 max-w-full">
+              <CardContent className="p-4 max-w-full overflow-hidden">
+                
+                {/* Header: Chứa Tiêu đề, Số dòng và Các nút công tắc */}
+                <div className="flex items-center flex-wrap gap-2 mb-4">
+                  <Database className="w-4 h-4 text-success" />
+                  <span className="text-base font-semibold text-success">Query Results</span>
+                  <Badge variant="outline" className="text-sm">
+                    {queryData?.length || 0} rows
+                  </Badge>
+
+                  {/* Khu vực nút chuyển đổi (Chỉ hiện khi có data) */}
+                  {queryData && queryData.length > 0 && (
+                    <div className="ml-auto flex items-center gap-3">
+                      
+                      {/* Nút chọn loại biểu đồ (Chỉ hiện khi đang ở chế độ Biểu đồ) */}
+                      {viewMode === 'chart' && (
+                        <div className="flex items-center gap-1 border-r border-border pr-3">
+                          <Button variant={chartType === 'bar' ? 'secondary' : 'ghost'} size="sm" className="h-8 px-2" onClick={() => setChartType('bar')} title="Biểu đồ Cột">
+                            <BarChart2 className="w-4 h-4"/>
+                          </Button>
+                          <Button variant={chartType === 'line' ? 'secondary' : 'ghost'} size="sm" className="h-8 px-2" onClick={() => setChartType('line')} title="Biểu đồ Đường">
+                            <LineChart className="w-4 h-4"/>
+                          </Button>
+                          <Button variant={chartType === 'pie' ? 'secondary' : 'ghost'} size="sm" className="h-8 px-2" onClick={() => setChartType('pie')} title="Biểu đồ Tròn">
+                            <PieChart className="w-4 h-4"/>
+                          </Button>
+                        </div>
+                      )}
+
+                      {/* Công tắc Bảng / Biểu đồ */}
+                      <div className="flex items-center gap-1 bg-muted p-1 rounded-md">
+                        <Button variant={viewMode === 'table' ? 'default' : 'ghost'} size="sm" className="h-7 px-3 text-xs" onClick={() => setViewMode('table')}>
+                          <Table className="w-3 h-3 mr-1.5"/> Bảng
+                        </Button>
+                        <Button variant={viewMode === 'chart' ? 'default' : 'ghost'} size="sm" className="h-7 px-3 text-xs" onClick={() => setViewMode('chart')}>
+                          <BarChart2 className="w-3 h-3 mr-1.5"/> Biểu đồ
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+
+                {/* Nội dung: Render Bảng hoặc Biểu đồ tùy theo viewMode */}
+                {queryData && queryData.length > 0 && (
+                  <div className="max-w-full overflow-hidden -mx-4 px-4">
+                    {viewMode === 'table' ? (
+                      // Render Bảng (Code cũ của twin)
+                      <div className="overflow-x-auto overflow-y-auto max-h-96 border border-border rounded scrollbar-visible" style={{ maxWidth: '100%' }}>
+                        <table className="text-sm border-collapse" data-testid="results-table" style={{ width: '100%', maxWidth: '100%', tableLayout: 'auto', display: 'table' }}>
+                          <thead className="sticky top-0 bg-card z-10">
+                            <tr className="border-b border-border">
+                              {Object.keys(queryData[0]).map((column) => (
+                                <th key={column} className="text-left px-3 py-2 text-muted-foreground font-semibold bg-card break-words" style={{ maxWidth: '300px', minWidth: '100px' }}>
+                                  {column}
+                                </th>
+                              ))}
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {queryData.map((row, index) => (
+                              <tr key={index} className="border-b border-border hover:bg-muted">
+                                {Object.values(row).map((value: any, cellIndex) => (
+                                  <td key={cellIndex} className="px-3 py-2 text-foreground break-words" style={{ maxWidth: '300px', minWidth: '100px' }}>
+                                    {String(value)}
+                                  </td>
+                                ))}
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    ) : (
+                      // Render Biểu đồ (Gọi Component mới)
+                      <ChartViewer data={queryData} chartType={chartType} />
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     );
