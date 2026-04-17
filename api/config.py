@@ -31,32 +31,27 @@ class EmbeddingsModel:
         self.config = config
 
     def embed(self, text: Union[str, list]) -> list:
-        """
-        Get the embeddings of the text
-
-        Args:
-            text (str|list): The text(s) to embed
-
-        Returns:
-            list: The embeddings of the text
-
-        """
-        embeddings = embedding(model=self.model_name, input=text)
+        # Ép sử dụng API_BASE và API_KEY riêng cho mã hóa dữ liệu
+        embeddings = embedding(
+            model=self.model_name, 
+            input=text, 
+            api_base=os.getenv("EMBEDDING_API_BASE"),
+            api_key=os.getenv("EMBEDDING_API_KEY"),
+            encoding_format="float"
+        )
         embeddings = [embedding["embedding"] for embedding in embeddings.data]
         return embeddings
 
     def get_vector_size(self) -> int:
-        """
-        Get the size of the vector
-
-        Returns:
-            int: The size of the vector
-
-        """
-        response = embedding(input=["Hello World"], model=self.model_name)
+        # Sửa lỗi sập hàm lấy kích thước vector ở log
+        response = embedding(
+            input=["Hello World"], 
+            model=self.model_name,
+            api_base=os.getenv("EMBEDDING_API_BASE"),
+            api_key=os.getenv("EMBEDDING_API_KEY")
+        )
         size = len(response.data[0]["embedding"])
         return size
-
 
 def _with_prefix(model: str, provider: str) -> str:
     """Ensure a model string has exactly one provider prefix."""
