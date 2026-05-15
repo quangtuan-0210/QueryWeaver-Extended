@@ -18,6 +18,12 @@ The original project primarily relies on external Cloud APIs (OpenAI/Azure) and 
 * **Graphiti Memory Tool Override:** Deeply debugged and fixed a critical 404 API error caused by hardcoded ghost models (e.g., `gpt-4.1-mini`) within the Graphiti conversation memory tool, enforcing environment variable overrides (`LLM_MODEL`) to utilize the local LLM.
 * **Strict Vietnamese Localization:** Customized the Relevancy Agent prompts (`RELEVANCY_PROMPT`) with critical strict rules to force the LLM to output its internal JSON reasoning and suggestions entirely in Vietnamese. This prevents language drift and ensures a native user experience when handling off-topic or inappropriate queries.
 
+### 🌳 Interactive AST Visualization & Security Validation
+* **Visual SQL X-Ray (AST Tree):** Integrated `react-d3-tree` into the React frontend to transform raw backend validation data into an interactive, zoomable, and pannable Abstract Syntax Tree (AST) graph. 
+* **Backend AST-to-JSON Parser:** Custom-built a recursive parsing algorithm in FastAPI using `sqlglot`. This engine dynamically translates native SQL expressions into a strict hierarchical JSON structure compatible with frontend graphing libraries, completely replacing the legacy rigid text outputs.
+* **Fullscreen Mode & UI/UX Optimization:** Designed a high-contrast Fullscreen overlay modal. Applied `step` path functions, horizontal orientations, and customized node sizing limits to gracefully handle wide, deeply nested SQL queries (like complex `JOIN`s) without layout distortion or text overlap.
+* **Frontend CSRF & State Stability:** Resolved missing CSRF token rejections by manually extracting and injecting `X-CSRFToken` from cookies into React fetch headers. Refactored React component states to prevent "Stale Closure" bugs and UI rendering crashes (White/Black Screen of Death) when handling invalid SQL parsing payloads.
+
 ### ⚙️ System Optimization & Bug Fixes
 * **Async Logic Fix:** Fully resolved asynchronous execution errors within Python's Generator process while traversing and embedding data schemas into GraphDB.
 * **FalkorDB Vector Index Reset Strategy:** Resolved vector dimension mismatch errors (`queryNodes` invalid arguments) caused by embedding model transitions, managing Docker volume lifecycles to allow FalkorDB to safely rebuild its index schema.
