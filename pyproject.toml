@@ -21,6 +21,9 @@ dependencies = [
     "fastmcp>=2.13.1",
     "pymssql",
     "SQLAlchemy",
+    "sqlglot",      
+    "requests",      
+    "python-dotenv"
 ]
 
 [dependency-groups]

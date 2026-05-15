@@ -23,7 +23,7 @@ from api.routes.graphs import graphs_router
 from api.routes.database import database_router
 from api.routes.tokens import tokens_router
 from api.routes.settings import settings_router
-
+from api.routes.validate_route import router as validate_router
 # Load environment variables from .env file
 load_dotenv()
 logging.basicConfig(
@@ -145,7 +145,7 @@ def create_app():  # pylint: disable=too-many-statements
     app.include_router(database_router)
     app.include_router(tokens_router, prefix="/tokens")
     app.include_router(settings_router, prefix="/api")
-
+    app.include_router(validate_router, prefix="/api")  
 
 
     # Control MCP endpoints via environment variable DISABLE_MCP

@@ -6,6 +6,7 @@ services:
       context: .
     container_name: queryweaver
     ports:
+
       - "8000:5000"
     env_file:
       - .env

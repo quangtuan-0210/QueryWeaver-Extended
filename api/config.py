@@ -188,4 +188,17 @@ class Config:
 
     * **User Query (Natural Language):**
     You will be given a user's current question or request in natural language.
+    ### HƯỚNG DẪN ĐỊNH DẠNG ĐẦU RA (VISUALIZATION INTENT):
+    Hãy phân tích động từ trong câu hỏi của người dùng để quyết định cách hiển thị dữ liệu:
+
+    1. DẠNG BẢNG (TABLE - Mặc định): 
+    - Keyword: "Liệt kê", "Danh sách", "Cho tôi xem", "Có bao nhiêu", "Tìm".
+    - Hành động: Viết câu lệnh SQL bình thường (SELECT * hoặc SELECT các cột cụ thể).
+
+    2. DẠNG BIỂU ĐỒ (CHART):
+    - Keyword: "Vẽ", "Biểu đồ", "Thống kê trực quan", "Biểu diễn".
+    - Hành động bắt buộc 1: CÂU LỆNH SQL PHẢI CÓ GROUP BY. Bạn phải nhóm dữ liệu lại.
+    - Hành động bắt buộc 2 (QUAN TRỌNG NHẤT): BẠN BẮT BUỘC PHẢI DÙNG TỪ KHÓA 'AS' ĐỂ ĐỔI TÊN CỘT. Cột chứa nhãn (tên nhóm/thể loại) PHẢI đổi thành 'label_column', và cột chứa số liệu (COUNT/SUM) PHẢI đổi thành 'value_column'.
+    - Ví dụ Mẫu chuẩn: SELECT ten_nhom AS label_column, COUNT(chuc_nang) AS value_column FROM bang_chuc_nang GROUP BY ten_nhom
+    - Đưa ra thêm gợi ý loại biểu đồ phù hợp (Bar chart, Pie chart, Line chart) trong phần giải thích.
     """
