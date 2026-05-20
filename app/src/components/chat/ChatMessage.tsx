@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import Tree from 'react-d3-tree'; // BẮT BUỘC IMPORT THƯ VIỆN CÂY
+import Tree from 'react-d3-tree';
 import type { User as UserType } from '@/types/api';
 
 import ChartViewer from './ChartViewer';
@@ -49,12 +49,10 @@ const ChatMessage = ({ type, content, steps, queryData, analysisInfo, confirmati
   const [viewMode, setViewMode] = useState<'table' | 'chart'>('table');
   const [chartType, setChartType] = useState<'bar' | 'line' | 'pie'>('bar');
   
-  // --- STATE QUẢN LÝ SQL VÀ CÂY AST ---
   const [currentSql, setCurrentSql] = useState(content);
   const [isValidating, setIsValidating] = useState(false);
-  const [isFullScreen, setIsFullScreen] = useState(false); // STATE QUẢN LÝ NÚT PHÓNG TO
+  const [isFullScreen, setIsFullScreen] = useState(false); 
   
-  // NÂNG CẤP: Chỉ lưu dữ liệu thô, không lưu giao diện HTML vào state nữa để tránh lỗi nút bấm
   const [validationResult, setValidationResult] = useState<{
     status: 'success' | 'failed' | 'fixed';
     logs?: string[];
@@ -94,7 +92,6 @@ const ChatMessage = ({ type, content, steps, queryData, analysisInfo, confirmati
     }
   };
 
-  // --- HÀM GỌI API VALIDATE VỀ BACKEND ---
   const handleValidateAST = async () => {
     setIsValidating(true);
     setValidationResult(null);
@@ -139,9 +136,6 @@ const ChatMessage = ({ type, content, steps, queryData, analysisInfo, confirmati
     } finally { setIsValidating(false); }
   };
   
-  // ==========================================
-  // RENDER: BONG BÓNG CHAT CỦA USER (ĐÃ KHÔI PHỤC)
-  // ==========================================
   if (type === 'user') {
     return (
       <div className="px-6" data-testid="user-message">
@@ -191,12 +185,8 @@ const ChatMessage = ({ type, content, steps, queryData, analysisInfo, confirmati
     );
   }
 
-  // ==========================================
-  // RENDER: KHUNG SQL VÀ KIỂM TRA AST
-  // ==========================================
   if (type === 'sql-query') {
     
-    // Xử lý dữ liệu cây JSON an toàn
     let treeData = null;
     let isJsonFormat = false;
     if (validationResult?.ast_tree) {
@@ -238,17 +228,15 @@ const ChatMessage = ({ type, content, steps, queryData, analysisInfo, confirmati
                   </div>
                 </div>
 
-                <div className="bg-black/50 p-4 rounded-md border border-white/10">
+                <div className="bg-black/50 p-4 rounded-md border border-white/10 text-white">
                   <pre className="text-sm font-mono text-blue-300 whitespace-pre-wrap break-all leading-relaxed">
                     <code>{currentSql}</code>
                   </pre>
                 </div>
 
-                {/* --- KHU VỰC HIỂN THỊ KẾT QUẢ AST --- */}
                 {validationResult && (
                   <div className={`mt-3 p-3 rounded-md border text-sm animate-in fade-in slide-in-from-top-1 ${validationResult.status === 'failed' ? 'bg-red-950/40 border-red-500/50' : 'bg-green-950/40 border-green-500/50'}`}>
                     
-                    {/* Báo lỗi hoặc thành công */}
                     {validationResult.status === 'success' ? (
                       <span className="text-green-400 font-bold block mb-1">✅ SQL An Toàn (AST Checked)</span>
                     ) : (
@@ -260,7 +248,6 @@ const ChatMessage = ({ type, content, steps, queryData, analysisInfo, confirmati
                       </div>
                     )}
 
-                    {/* Khung vẽ cây AST */}
                     {validationResult.ast_tree && (
                       <details className="mt-3 pt-2 border-t border-white/20 text-xs cursor-pointer">
                         <summary className="text-gray-400 hover:text-white mb-3 outline-none font-bold">🌳 Bấm để xem sơ đồ cây AST (X-Quang SQL)</summary>
@@ -278,27 +265,35 @@ const ChatMessage = ({ type, content, steps, queryData, analysisInfo, confirmati
                               className="absolute top-2 right-2 z-10 bg-black/40 hover:bg-black/60 text-cyan-400 border border-cyan-500/30 h-8 w-8 p-0"
                               onClick={(e) => {
                                 e.preventDefault();
-                                setIsFullScreen(true); // BẬT TOÀN MÀN HÌNH CHUẨN XÁC
+                                setIsFullScreen(true);
                               }}
                             >
                               <Maximize2 className="w-4 h-4" />
                             </Button>
 
+                            {/* --- CÂY NHỎ: DÙNG FOREIGNOBJECT ĐỂ ÉP HIỂN THỊ HTML ĐÈ LÊN CSS CỦA SVG --- */}
                             <div style={{ width: '100%', height: '500px' }} className="bg-black/60 rounded border border-white/10 overflow-hidden relative">
-                              <style>{`.rd3t-link { stroke: #00d8ff !important; stroke-width: 2px !important; }`}</style>
+                              <style>{`
+                                .rd3t-link { stroke: #00d8ff !important; stroke-width: 1.5px !important; opacity: 0.5; }
+                              `}</style>
                               <Tree 
                                 data={treeData} 
                                 orientation="vertical" 
                                 pathFunc="diagonal" 
-                                translate={{ x: 350, y: 50 }} 
-                                nodeSize={{ x: 150, y: 100 }} 
+                                translate={{ x: 300, y: 50 }} 
+                                nodeSize={{ x: 150, y: 80 }} 
                                 renderCustomNodeElement={({ nodeDatum, toggleNode }) => (
                                   <g>
-                                    <circle r={15} fill="#0ea5e9" stroke="#00d8ff" strokeWidth={2} onClick={toggleNode} cursor="pointer" />
-                                    <text fill="white" stroke="none" x={0} y={30} textAnchor="middle" fontSize="12px" fontFamily="mono">
-                                      {nodeDatum.name}
-                                      {nodeDatum.attributes && nodeDatum.attributes.label && ` (${nodeDatum.attributes.label})`}
-                                    </text>
+                                    <circle r={12} fill="#0ea5e9" stroke="#00d8ff" strokeWidth={2} onClick={toggleNode} cursor="pointer" />
+                                    {/* Dùng thẻ HTML bọc trong foreignObject để không bị SVG ghi đè màu */}
+                                    <foreignObject x={-100} y={15} width={200} height={50}>
+                                      <div style={{ color: '#ffffff', textAlign: 'center', fontSize: '11px', fontFamily: 'monospace', textShadow: '1px 1px 2px #000' }}>
+                                        <span style={{ color: '#ffffff' }}>{nodeDatum.name}</span>
+                                        {nodeDatum.attributes?.label && (
+                                          <span style={{ color: '#facc15' }}><br/>{nodeDatum.attributes.label}</span>
+                                        )}
+                                      </div>
+                                    </foreignObject>
                                   </g>
                                 )}
                               />
@@ -314,10 +309,7 @@ const ChatMessage = ({ type, content, steps, queryData, analysisInfo, confirmati
           </div>
         </div>
 
-        {/* ==========================================
-            GIAO DIỆN TOÀN MÀN HÌNH (OVERLAY MODAL)
-            Nằm ngoài các Card để không bị giới hạn khung
-        ========================================== */}
+        {/* --- CÂY TOÀN MÀN HÌNH: CŨNG DÙNG FOREIGNOBJECT --- */}
         {isFullScreen && isJsonFormat && treeData && (
           <div className="fixed inset-0 z-[99999] bg-black/95 flex flex-col p-4 animate-in fade-in zoom-in duration-200">
             <div className="flex justify-between items-center mb-4 border-b border-white/10 pb-4">
@@ -336,32 +328,45 @@ const ChatMessage = ({ type, content, steps, queryData, analysisInfo, confirmati
             </div>
             
             <div className="flex-1 rounded-lg border border-cyan-500/20 bg-black/40 overflow-hidden cursor-move">
-              <style>{`.rd3t-link { stroke: #00d8ff !important; stroke-width: 2px !important; }`}</style>
+              <style>{`
+                .rd3t-link { stroke: #00d8ff !important; stroke-width: 1.5px !important; opacity: 0.6; }
+              `}</style>
               <Tree 
                 data={treeData} 
-                orientation="vertical" 
-                pathFunc="diagonal" 
-                translate={{ x: window.innerWidth / 2, y: 100 }} 
-                nodeSize={{ x: 200, y: 120 }} 
+                orientation="horizontal" 
+                pathFunc="step" 
+                translate={{ x: 100, y: window.innerHeight / 2.5 }} 
+                nodeSize={{ x: 280, y: 40 }} 
+                zoom={0.85}
+                scaleExtent={{ min: 0.1, max: 3 }}
+                separation={{ siblings: 1, nonSiblings: 1.5 }}
                 renderCustomNodeElement={({ nodeDatum, toggleNode }) => (
                   <g>
-                    <circle r={20} fill="#0ea5e9" stroke="#00d8ff" strokeWidth={3} onClick={toggleNode} cursor="pointer" />
-                    <text fill="white" x={0} y={40} textAnchor="middle" fontSize="14px" fontWeight="bold" fontFamily="mono">
-                      {nodeDatum.name}
-                      {nodeDatum.attributes && nodeDatum.attributes.label && ` (${nodeDatum.attributes.label})`}
-                    </text>
+                    <circle r={10} fill="#0ea5e9" stroke="#00d8ff" strokeWidth={2} onClick={toggleNode} cursor="pointer" />
+                    {/* Dùng thẻ HTML bọc trong foreignObject */}
+                    <foreignObject x={18} y={-12} width={260} height={40}>
+                      <div style={{ color: '#ffffff', fontSize: '13px', fontWeight: 'bold', fontFamily: 'monospace', textShadow: '1px 1px 3px #000', whiteSpace: 'nowrap' }}>
+                        <span style={{ color: '#ffffff' }}>{nodeDatum.name}</span>
+                        {nodeDatum.attributes && nodeDatum.attributes.label && (
+                          <span style={{ color: '#facc15', fontWeight: 'normal' }}> : {nodeDatum.attributes.label}</span>
+                        )}
+                      </div>
+                    </foreignObject>
                   </g>
                 )}
               />
             </div>
-            <p className="text-center text-gray-500 text-xs mt-4">Tip: Sử dụng chuột để kéo và lăn chuột để Phóng to/Thu nhỏ cây</p>
+            <div className="flex justify-between text-gray-500 text-xs mt-4 italic px-4">
+              <span>Lăn chuột: Phóng to/Thu nhỏ</span>
+              <span>Cầm chuột kéo: Di chuyển sơ đồ</span>
+              <span>Bấm vào nút tròn: Thu gọn/Mở rộng nhánh</span>
+            </div>
           </div>
         )}
       </div>
     );
   }
 
-  // RENDER: QUERY RESULT
   if (type === 'query-result') {
     return (
       <div className="px-6">
@@ -413,7 +418,6 @@ const ChatMessage = ({ type, content, steps, queryData, analysisInfo, confirmati
     );
   }
 
-  // RENDER: AI TEXT MESSAGE
   if (type === 'ai') {
     return (
       <div className="px-6">
@@ -425,7 +429,6 @@ const ChatMessage = ({ type, content, steps, queryData, analysisInfo, confirmati
     );
   }
 
-  // RENDER: AI STEPS / PROGRESS
   if (type === 'ai-steps') {
     return (
       <div className="px-6">
