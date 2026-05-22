@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/use-toast";
 import { useDatabase } from "@/contexts/DatabaseContext";
@@ -13,6 +13,7 @@ import SuggestionCards from "../SuggestionCards";
 import { ChatService } from "@/services/chat";
 import type { ConfirmRequest } from "@/types/api";
 import { getVendorPrefix } from "@/utils/vendorConfig";
+import { Shield, ChevronDown, ChevronUp } from "lucide-react"; // 👈 ĐÃ THÊM ICON MỚI VÀO ĐÂY
 
 interface ChatMessageData {
   id: string;
@@ -55,6 +56,13 @@ const ChatInterface = ({
   useRulesFromDatabase = true
 }: ChatInterfaceProps) => {
   const { toast } = useToast();
+  
+  // ================= BẢO MẬT ĐA TẦNG =================
+  const [sensitiveCols, setSensitiveCols] = useState(""); 
+  const [rowFilter, setRowFilter] = useState("");         
+  const [showSecurity, setShowSecurity] = useState(false); // 👈 THÊM STATE ĐỂ LƯU TRẠNG THÁI ẨN/HIỆN
+  // ====================================================
+
   const { selectedGraph } = useDatabase();
   const { vendor, apiKey, modelName, isApiKeyValid } = useSettings();
   const { messages, setMessages, conversationHistory, isProcessing, setIsProcessing } = useChat();
@@ -139,7 +147,6 @@ const ChatInterface = ({
     });
     
     try {
-      // No need for a steps accumulator message - we'll add each step as a separate AI message
       let finalContent = "";
       let sqlQuery = "";
       let queryResults: any[] | null = null;
@@ -150,9 +157,24 @@ const ChatInterface = ({
         explanation?: string;
         isValid?: boolean;
       } = {};
+
+      // ================= CHUẨN BỊ LỜI ĐE DỌA AI =================
+      let aiPrompt = query;
+      
+      // Lớp 1: Cấm cột
+      if (sensitiveCols.trim() !== "") {
+        aiPrompt += `\n\n⚠️ [CRITICAL SECURITY WARNING]: YOU MUST COMPLETELY IGNORE AND NEVER USE THE FOLLOWING COLUMNS IN YOUR SQL: ${sensitiveCols.trim()}.`;
+      }
+
+      // Lớp 2: Ép điều kiện hàng
+      if (rowFilter.trim() !== "") {
+        aiPrompt += `\n\n⚠️ [ROW-LEVEL SECURITY]: YOU MUST ALWAYS INCLUDE THIS CONDITION IN THE 'WHERE' CLAUSE OF YOUR SQL STATEMENT: ${rowFilter.trim()}.`;
+      }
+      // ============================================================
+
       // Stream the query
       for await (const message of ChatService.streamQuery({
-        query,
+        query: aiPrompt,
         database: selectedGraph.id,
         history: historySnapshot,
         customApiKey: isApiKeyValid ? apiKey : undefined,
@@ -163,7 +185,6 @@ const ChatInterface = ({
       })) {
         
         if (message.type === 'status' || message.type === 'reasoning' || message.type === 'reasoning_step') {
-          // Add each reasoning step as a separate AI message (like the old UI)
           const stepText = message.content || message.message || '';
           
           const stepMessage: ChatMessageData = {
@@ -178,9 +199,7 @@ const ChatInterface = ({
             return newMessages;
           });
         } else if (message.type === 'sql_query') {
-          // Store SQL query to display - backend sends it in 'data' field
           sqlQuery = message.data || message.content || message.message || '';
-          // Also capture analysis information
           analysisInfo = {
             confidence: message.conf,
             missing: message.miss,
@@ -188,20 +207,15 @@ const ChatInterface = ({
             explanation: message.exp,
             isValid: message.is_valid
           };
-
         } else if (message.type === 'query_result') {
-          // Store query results to display as table - backend sends it in 'data' field
           queryResults = message.data || [];
         } else if (message.type === 'ai_response') {
-          // AI-generated response - this is what we show to the user
           const responseContent = (message.message || message.content || '').trim();
           finalContent = responseContent;
         } else if (message.type === 'followup_questions') {
-          // Follow-up questions when query is unclear or off-topic
           const followupContent = (message.message || message.content || '').trim();
           finalContent = followupContent;
         } else if (message.type === 'error') {
-          // Handle error
           toast({
             title: "Query Failed",
             description: message.content,
@@ -209,7 +223,6 @@ const ChatInterface = ({
           });
           finalContent = `Error: ${message.content}`;
         } else if (message.type === 'confirmation' || message.type === 'destructive_confirmation') {
-          // Handle destructive operation confirmation - add inline confirmation message
           const confirmationMessage: ChatMessageData = {
             id: `confirm-${Date.now()}`,
             type: 'confirmation',
@@ -224,17 +237,12 @@ const ChatInterface = ({
           };
 
           setMessages(prev => [...prev, confirmationMessage]);
-
-          // Don't set finalContent - we want the confirmation to be standalone
           finalContent = "";
-        } else {
-          console.warn('Unknown message type received:', message.type, message);
         }
         
         setTimeout(() => scrollToBottom(), 50);
       }
 
-      // Add SQL query message with analysis info (even if SQL is empty)
       if (sqlQuery !== undefined || Object.keys(analysisInfo).length > 0) {
         const sqlMessage: ChatMessageData = {
           id: (Date.now() + 2).toString(),
@@ -246,7 +254,6 @@ const ChatInterface = ({
         setMessages(prev => [...prev, sqlMessage]);
       }
       
-      // Add query results table if available
       if (queryResults && queryResults.length > 0) {
         const resultsMessage: ChatMessageData = {
           id: (Date.now() + 3).toString(),
@@ -258,7 +265,6 @@ const ChatInterface = ({
         setMessages(prev => [...prev, resultsMessage]);
       }
       
-      // Add AI final response if we have one
       if (finalContent) {
         const finalResponse: ChatMessageData = {
           id: (Date.now() + 4).toString(),
@@ -271,7 +277,6 @@ const ChatInterface = ({
         conversationHistory.current.push({ role: 'assistant', content: finalContent });
       }
       
-      // Show success toast
       toast({
         title: "Query Complete",
         description: "Successfully processed your database query!",
@@ -302,13 +307,11 @@ const ChatInterface = ({
   const handleConfirmDestructive = async (messageId: string) => {
     if (!selectedGraph) return;
 
-    // Find the confirmation message to get the data
     const confirmMessage = messages.find(m => m.id === messageId && m.type === 'confirmation');
     if (!confirmMessage?.confirmationData) return;
 
     setIsProcessing(true);
 
-    // Remove the confirmation message and replace with "Executing..." message
     setMessages(prev => prev.filter(m => m.id !== messageId));
 
     const executingMessage: ChatMessageData = {
@@ -319,7 +322,6 @@ const ChatInterface = ({
     };
     setMessages(prev => [...prev, executingMessage]);
 
-    // Show processing toast
     toast({
       title: "Executing Operation",
       description: "Processing your confirmed operation...",
@@ -329,7 +331,6 @@ const ChatInterface = ({
       let finalContent = "";
       let queryResults: any[] | null = null;
 
-      // Build confirm request with custom credentials if available
       const confirmRequest: ConfirmRequest = {
         sql_query: confirmMessage.confirmationData.sqlQuery,
         confirmation: 'CONFIRM',
@@ -346,13 +347,11 @@ const ChatInterface = ({
         }
       }
 
-      // Stream the confirmation response
       for await (const message of ChatService.streamConfirmOperation(
         selectedGraph.id,
         confirmRequest
       )) {
         if (message.type === 'status' || message.type === 'reasoning' || message.type === 'reasoning_step') {
-          // Add reasoning steps
           const stepText = message.content || message.message || '';
           const stepMessage: ChatMessageData = {
             id: `step-${Date.now()}-${Math.random()}`,
@@ -362,17 +361,13 @@ const ChatInterface = ({
           };
           setMessages(prev => [...prev, stepMessage]);
         } else if (message.type === 'query_result') {
-          // Store query results
           queryResults = message.data || [];
         } else if (message.type === 'ai_response') {
-          // AI-generated response
           const responseContent = (message.message || message.content || '').trim();
           finalContent = responseContent;
         } else if (message.type === 'error') {
-          // Handle error - backend sends 'message' field, not 'content'
           let errorMsg = message.message || message.content || 'Unknown error occurred';
 
-          // Clean up common database errors to be more user-friendly
           if (errorMsg.includes('duplicate key value violates unique constraint')) {
             const match = errorMsg.match(/Key \((\w+)\)=\(([^)]+)\)/);
             if (match) {
@@ -391,9 +386,7 @@ const ChatInterface = ({
               errorMsg = 'Required field cannot be empty.';
             }
           } else if (errorMsg.includes('PostgreSQL query execution error:') || errorMsg.includes('MySQL query execution error:')) {
-            // Strip the "PostgreSQL/MySQL query execution error:" prefix
             errorMsg = errorMsg.replace(/^(PostgreSQL|MySQL) query execution error:\s*/i, '');
-            // Remove technical details after newline
             errorMsg = errorMsg.split('\n')[0];
           }
 
@@ -404,7 +397,6 @@ const ChatInterface = ({
           });
           finalContent = `${errorMsg}`;
         } else if (message.type === 'schema_refresh') {
-          // Schema refresh notification
           const refreshContent = message.message || message.content || '';
           const refreshMessage: ChatMessageData = {
             id: `refresh-${Date.now()}`,
@@ -418,7 +410,6 @@ const ChatInterface = ({
         setTimeout(() => scrollToBottom(), 50);
       }
 
-      // Add query results table if available
       if (queryResults && queryResults.length > 0) {
         const resultsMessage: ChatMessageData = {
           id: (Date.now() + 3).toString(),
@@ -430,7 +421,6 @@ const ChatInterface = ({
         setMessages(prev => [...prev, resultsMessage]);
       }
 
-      // Add AI final response if we have one
       if (finalContent) {
         const finalResponse: ChatMessageData = {
           id: (Date.now() + 4).toString(),
@@ -470,7 +460,6 @@ const ChatInterface = ({
   };
 
   const handleCancelDestructive = (messageId: string) => {
-    // Remove the confirmation message and add cancellation message
     setMessages(prev => prev.filter(m => m.id !== messageId));
 
     setMessages(prev => [
@@ -512,9 +501,7 @@ const ChatInterface = ({
               onCancel={msg.type === 'confirmation' ? () => handleCancelDestructive(msg.id) : undefined}
             />
           ))}
-          {/* Show loading skeleton when processing */}
           {isProcessing && <LoadingMessage />}
-          {/* Invisible div to scroll to */}
           <div ref={messagesEndRef} />
         </div>
       </div>
@@ -522,6 +509,54 @@ const ChatInterface = ({
       {/* Bottom Section with Suggestions and Input */}
       <div className="border-t border-border bg-background">
         <div className="p-6">
+
+          {/* ================= GIAO DIỆN BẢO MẬT ĐA TẦNG (CÓ THU GỌN) ================= */}
+          <div className="mb-4">
+            {/* Nút Toggle */}
+            <button
+              onClick={() => setShowSecurity(!showSecurity)}
+              className="flex items-center gap-2 text-sm font-semibold text-muted-foreground hover:text-foreground transition-colors mb-2"
+            >
+              <Shield className="w-4 h-4 text-purple-500" />
+              {showSecurity ? "Ẩn tùy chọn bảo mật" : "Thiết lập bảo mật nâng cao"}
+              {showSecurity ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+
+            {/* Nội dung được ẩn/hiện */}
+            {showSecurity && (
+              <div className="space-y-2 animate-in slide-in-from-top-2 fade-in-20 duration-200">
+                {/* LỚP 1: Ô NHẬP CỘT CẤM */}
+                <div className="flex items-center gap-3 p-3 bg-red-950/20 border border-red-900/50 rounded-lg">
+                  <label className="text-red-400 text-sm font-semibold whitespace-nowrap min-w-[150px]">
+                    🔒 Cấm cột (Column):
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="VD: users.password, artists.Name"
+                    value={sensitiveCols}
+                    onChange={(e) => setSensitiveCols(e.target.value)}
+                    className="flex-1 bg-background border border-border rounded px-3 py-1.5 text-sm text-foreground focus:outline-none focus:border-red-500 placeholder:text-muted-foreground"
+                  />
+                </div>
+
+                {/* LỚP 2: Ô NHẬP ĐIỀU KIỆN HÀNG */}
+                <div className="flex items-center gap-3 p-3 bg-blue-950/20 border border-blue-900/50 rounded-lg">
+                  <label className="text-blue-400 text-sm font-semibold whitespace-nowrap min-w-[150px]">
+                    🛡️ Ép điều kiện (Row):
+                  </label>
+                  <input
+                    type="text"
+                    placeholder="VD: role != 'admin' hoặc country = 'VN'"
+                    value={rowFilter}
+                    onChange={(e) => setRowFilter(e.target.value)}
+                    className="flex-1 bg-background border border-border rounded px-3 py-1.5 text-sm text-foreground focus:outline-none focus:border-blue-500 placeholder:text-muted-foreground"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+          {/* ======================================================================= */}
+
           {/* Suggestion Cards - Only show for DEMO_CRM database */}
           {(selectedGraph?.id === 'DEMO_CRM' || selectedGraph?.name === 'DEMO_CRM') && (
             <SuggestionCards

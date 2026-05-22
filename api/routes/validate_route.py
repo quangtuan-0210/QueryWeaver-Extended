@@ -1,5 +1,6 @@
 import sqlglot
 from sqlglot import exp
+from sqlglot.optimizer.qualify import qualify
 from fastapi import APIRouter
 from pydantic import BaseModel
 from api.sql_utils.validator import SQLValidator
@@ -11,6 +12,7 @@ class ValidateRequest(BaseModel):
     sql: str
     schema_text: str = ""
     dialect: str = "mysql" 
+    sensitive_columns: list[str] = [] # NHẬN DANH SÁCH CỘT CẤM TỪ GIAO DIỆN
 
 def ast_to_json(node):
     """
@@ -39,24 +41,56 @@ def ast_to_json(node):
             child = ast_to_json(val)
             if child is not None: # Chỉ thêm nếu không phải None
                 children.append(child)
-            
     if children:
         result["children"] = children
-        
     return result
 
 @router.post("/validate")
 async def validate_sql_endpoint(request: ValidateRequest):
     try:
+        # --- ĐOẠN CODE MỚI: KIỂM TRA BẢO MẬT CỘT NHẠY CẢM ---
+        if request.sensitive_columns:
+            try:
+                parsed_tree = sqlglot.parse_one(request.sql, dialect=request.dialect)
+                qualified_tree = parsed_tree.copy()
+                
+                # Lột mặt nạ bí danh (VD: c.Name -> artists.Name)
+                try: 
+                    qualify(qualified_tree) 
+                except: 
+                    pass
+                
+                # Chuyển danh sách cấm thành chữ thường và xóa khoảng trắng
+                lower_sensitive = [c.lower().strip() for c in request.sensitive_columns]
+                
+                # Quét toàn bộ Node Column trên cây AST
+                for column_node in qualified_tree.find_all(exp.Column):
+                    t_name = column_node.text("table").lower()
+                    c_name = column_node.text("this").lower()
+                    
+                    full_col = f"{t_name}.{c_name}" if t_name else ""
+                    
+                    # Nếu tên cột hoặc định dạng bảng.cột nằm trong danh sách cấm
+                    if full_col in lower_sensitive or c_name in [s.split('.')[-1] for s in lower_sensitive]:
+                        return {
+                            "status": "failed", 
+                            "is_valid": False, 
+                            "logs": [f"🚨 AI vi phạm quy tắc: Cố tình truy cập cột nhạy cảm '{c_name}'!"],
+                            "ast_tree": {"name": "🔒 Security Blocked", "children": [{"name": "Từ chối truy cập dữ liệu nhạy cảm"}]}
+                        }
+            except Exception:
+                # Bỏ qua nếu lỗi cú pháp nặng không parse nổi (sẽ bị bắt ở validator dưới)
+                pass
+
+        # --- VALIDATOR GỐC ---
         my_validator = SQLValidator()
+        # Khởi tạo validator cũ vẫn chạy bình thường để lấy logic kiểm tra an toàn
+        is_valid, result, _ = my_validator.validate(request.sql, dialect=request.dialect)
         
-        # Validator cũ vẫn chạy bình thường để lấy logic kiểm tra an toàn
-        is_valid, result, _ = my_validator.validate(request.sql, dialect="mysql")
-        
-        # --- ĐOẠN CODE MỚI: TẠO JSON CHO REACT-D3-TREE ---
+        # --- TẠO JSON CHO REACT-D3-TREE ---
         try:
             # Parse câu SQL thành cây AST của sqlglot
-            parsed_expr = sqlglot.parse_one(request.sql, dialect="mysql")
+            parsed_expr = sqlglot.parse_one(request.sql, dialect=request.dialect)
             # Chuyển đổi cây AST thành JSON
             json_ast = ast_to_json(parsed_expr)
         except Exception as parse_err:
@@ -82,9 +116,6 @@ async def validate_sql_endpoint(request: ValidateRequest):
         return {
             "status": "failed", 
             "is_valid": False, 
-            "logs": [f"🛑 Backend bị sập: {str(e)}"],
-            "ast_tree": {
-                "name": "Backend Error",
-                "children": [{"name": str(e)}]
-            }
+            "logs": [f"Backend Error: {str(e)}"],
+            "ast_tree": {"name": "Error", "children": [{"name": str(e)}]}
         }

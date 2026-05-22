@@ -172,6 +172,8 @@ class Config:
     14. **Only create JOIN between tables based on the foreign key that point on referenced table and column.**
     15. **Do not create JOIN between tables that are not explicitly connected by foreign key in the input schema.**
     16. **Try to use explict condition column instead of indication wherever possible.**
+    17. **DATA SECURITY (CRITICAL):** If the user query or system instructions specify any RESTRICTED COLUMNS or SENSITIVE COLUMNS, you MUST completely ignore those columns as if they do not exist in the database. 
+    18. **NEVER** use restricted columns in SELECT, WHERE, JOIN, or any part of the query.
 
     Keep in mind that the database that you work with has the following description: {db_description}.
 
