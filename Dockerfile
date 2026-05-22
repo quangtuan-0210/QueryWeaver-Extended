@@ -1,6 +1,8 @@
-# Multi-stage build: Start with Python 3.12 base
-FROM python:3.12-bookworm AS python-base
-FROM falkordb/falkordb:latest
+# Stage 1: lấy FalkorDB binaries + libs từ image gốc (Trixie)
+FROM falkordb/falkordb@sha256:e93fcd753fe612fb0a222166a0620a1ae31b826a12f223c3b6d06038d9d7a364 AS falkordb-src
+
+# Stage 2: dùng Python Bookworm làm nền
+FROM python:3.12-slim-bookworm
 
 ENV PYTHONUNBUFFERED=1 \
     FALKORDB_HOST=localhost \
@@ -8,13 +10,27 @@ ENV PYTHONUNBUFFERED=1 \
 
 USER root
 
-COPY --from=python-base /usr/local /usr/local
+# Copy FalkorDB + Redis binaries
+COPY --from=falkordb-src /usr/local/bin/redis-server /usr/local/bin/redis-server-real
+COPY --from=falkordb-src /usr/local/bin/redis-cli    /usr/local/bin/redis-cli
+COPY --from=falkordb-src /var/lib/falkordb           /var/lib/falkordb
 
+# Copy toàn bộ lib Trixie vào thư mục riêng để redis-server dùng
+COPY --from=falkordb-src /lib/x86_64-linux-gnu       /usr/local/lib/trixie
+COPY --from=falkordb-src /usr/lib/x86_64-linux-gnu   /usr/local/lib/trixie
+
+# Copy dynamic linker Trixie
+COPY --from=falkordb-src /lib64/ld-linux-x86-64.so.2 /usr/local/lib/trixie/ld-linux-x86-64.so.2
+
+# Wrap redis-server: dùng linker + libs Trixie hoàn toàn
+RUN printf '#!/bin/sh\nexec /usr/local/lib/trixie/ld-linux-x86-64.so.2 --library-path /usr/local/lib/trixie /usr/local/bin/redis-server-real "$@"\n' \
+       > /usr/local/bin/redis-server \
+    && chmod +x /usr/local/bin/redis-server
+
+# Cài tools trên Bookworm
 RUN apt-get update && apt-get install -y --no-install-recommends \
     netcat-openbsd git build-essential curl ca-certificates gnupg \
-    && rm -rf /var/lib/apt/lists/* \
-    && ln -sf /usr/local/bin/python3.12 /usr/bin/python3 \
-    && ln -sf /usr/local/bin/python3.12 /usr/bin/python
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
@@ -23,30 +39,21 @@ COPY --from=ghcr.io/astral-sh/uv:latest /uv /usr/local/bin/uv
 ENV UV_SYSTEM_PYTHON=1
 ENV PATH="/app/.venv/bin:$PATH"
 
-# Install Python deps (cache layer)
 COPY pyproject.toml uv.lock* README.md ./
 RUN uv sync --no-dev --no-install-project
 
 # Install Node.js 22
-RUN apt-get update \
-    && apt-get remove -y nodejs || true \
-    && rm -rf /var/lib/apt/lists/* \
-    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get update \
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-# Install frontend deps (cache layer)
 COPY app/package*.json ./app/
 RUN npm --prefix ./app ci --no-audit --no-fund
 
-# Copy TOÀN BỘ code (api/, app/, etc.)
 COPY . .
 
-# Build frontend
 RUN npm --prefix ./app run build
 
-# Final Python sync
 RUN uv sync --frozen --no-dev
 
 COPY start.sh /start.sh
